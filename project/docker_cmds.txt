@@ -1,0 +1,5 @@
+# Access postgres command line
+docker exec -it postgres psql -h localhost -U postgres
+
+# Access mongodb command line
+docker exec -it mongodb mongosh "mongodb://admin:password@mongodb:27017/"

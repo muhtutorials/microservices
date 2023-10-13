@@ -1,0 +1,90 @@
+services:
+  broker:
+    build:
+      context: ../broker
+      dockerfile: ../broker/broker.dockerfile
+    container_name: broker
+    ports:
+      - "8080:8080"
+    restart: always
+  auth:
+    build:
+      context: ../auth
+      dockerfile: ../auth/auth.dockerfile
+    container_name: auth
+    environment:
+      DSN: "host=host.docker.internal port=5555 user=postgres password=postgres dbname=users sslmode=disable connect_timeout=5"
+    ports:
+      - "3000:3000"
+    restart: always
+    depends_on:
+      - postgres
+  postgres:
+    image: postgres
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: users
+    ports:
+      # port 5432 was taken by a locally running postgres server
+      - "5555:5432"
+    volumes:
+      - ./db_data/postgres:/var/lib/postgresql/data
+    restart: always
+  logger:
+    build:
+      context: ../logger
+      dockerfile: ../logger/logger.dockerfile
+    container_name: logger
+    restart: always
+    depends_on:
+      - mongodb
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_DATABASE: logger
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - ./db_data/mongodb:/data/db
+    restart: always
+  mail:
+    build:
+      context: ../mail
+      dockerfile: ../mail/mail.dockerfile
+    container_name: mail
+    environment:
+      MAIL_DOMAIN: localhost
+      MAIL_HOST: mailhog
+      MAIL_PORT: 1025
+      MAIL_ENCRYPTION: none
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
+      MAIL_FROM_NAME: "Sub-Zero"
+      MAIL_FROM_ADDRESS: "subzero@gmail.com"
+    restart: always
+    depends_on:
+      - mailhog
+  mailhog:
+    image: "mailhog/mailhog:latest"
+    container_name: mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+  listener:
+    build:
+      context: ../listener
+      dockerfile: ../listener/listener.dockerfile
+    container_name: listener
+    restart: always
+    depends_on:
+      - rabbitmq
+  rabbitmq:
+    image: rabbitmq
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+    volumes:
+      - ./db_data/rabbitmq:/var/lib/rabbitmq
